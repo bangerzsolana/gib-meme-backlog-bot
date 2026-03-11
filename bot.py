@@ -63,6 +63,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Backlog Bot 📋\n\nUse /backlog or /bug to log items.")
 
 
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Backlog Bot reporting for duty 📋")
+
+
 async def commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = get_username(update)
     text = (
@@ -231,6 +235,7 @@ def main():
 
     # 1. Basic commands
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("status", status))
     app.add_handler(CommandHandler("commands", commands))
     app.add_handler(CommandHandler("setup", setup))
 
