@@ -7,7 +7,6 @@ from telegram.ext import (
     Application,
     CommandHandler,
     ContextTypes,
-    ConversationHandler,
     MessageHandler,
     filters,
 )
@@ -20,10 +19,6 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
-
-# Conversation states
-NEWADMIN_USERNAME = 0
-REMOVEADMIN_USERNAME = 1
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -81,8 +76,8 @@ async def commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/backlog <description> — Add a backlog item\n"
             "/bug <description> — Log a bug report\n"
             "/setup — Link this group\n"
-            "/newadmin — Add an admin\n"
-            "/removeadmin — Remove an admin\n"
+            "/newadmin <username> — Add an admin\n"
+            "/removeadmin <username> — Remove an admin\n"
             "/admins — List admins"
         )
     await update.message.reply_text(text)
@@ -151,62 +146,35 @@ async def bug(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ---------------------------------------------------------------------------
-# /newadmin conversation
+# /newadmin and /removeadmin
 # ---------------------------------------------------------------------------
 
 @require_admin
-async def newadmin_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Enter the Telegram username of the new admin (without @):")
-    return NEWADMIN_USERNAME
-
-
-async def newadmin_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def newadmin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("Usage: /newadmin <username>")
+        return
+    raw = context.args[0].lstrip("@").lower()
     added_by = get_username(update)
-    raw = update.message.text.strip().lstrip("@").lower()
-    if not raw:
-        await update.message.reply_text("No username provided. Operation cancelled.")
-        return ConversationHandler.END
-
-    success = db.add_admin(raw, added_by)
-    if success:
+    if db.add_admin(raw, added_by):
         await update.message.reply_text(f"✅ @{raw} has been added as an admin.")
     else:
         await update.message.reply_text(f"@{raw} is already an admin.")
-    return ConversationHandler.END
 
-
-async def newadmin_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Cancelled.")
-    return ConversationHandler.END
-
-
-# ---------------------------------------------------------------------------
-# /removeadmin conversation
-# ---------------------------------------------------------------------------
 
 @require_admin
-async def removeadmin_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Enter the Telegram username of the admin to remove (without @):")
-    return REMOVEADMIN_USERNAME
-
-
-async def removeadmin_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    raw = update.message.text.strip().lstrip("@").lower()
-    if not raw:
-        await update.message.reply_text("No username provided. Operation cancelled.")
-        return ConversationHandler.END
-
-    success = db.remove_admin(raw)
-    if success:
+async def removeadmin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("Usage: /removeadmin <username>")
+        return
+    raw = context.args[0].lstrip("@").lower()
+    if raw == get_username(update):
+        await update.message.reply_text("You can't remove yourself.")
+        return
+    if db.remove_admin(raw):
         await update.message.reply_text(f"✅ @{raw} has been removed as an admin.")
     else:
         await update.message.reply_text(f"@{raw} was not found in the admin list.")
-    return ConversationHandler.END
-
-
-async def removeadmin_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Cancelled.")
-    return ConversationHandler.END
 
 
 # ---------------------------------------------------------------------------
@@ -276,30 +244,9 @@ def main():
     )
     app.add_handler(CommandHandler("bug", bug))
 
-    # 3. Conversation handlers
-    newadmin_conv = ConversationHandler(
-        entry_points=[CommandHandler("newadmin", newadmin_start)],
-        states={
-            NEWADMIN_USERNAME: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, newadmin_receive)
-            ],
-        },
-        fallbacks=[CommandHandler("cancel", newadmin_cancel)],
-    )
-    app.add_handler(newadmin_conv)
-
-    removeadmin_conv = ConversationHandler(
-        entry_points=[CommandHandler("removeadmin", removeadmin_start)],
-        states={
-            REMOVEADMIN_USERNAME: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, removeadmin_receive)
-            ],
-        },
-        fallbacks=[CommandHandler("cancel", removeadmin_cancel)],
-    )
-    app.add_handler(removeadmin_conv)
-
-    # 4. Admins list
+    # 3. Admin management
+    app.add_handler(CommandHandler("newadmin", newadmin))
+    app.add_handler(CommandHandler("removeadmin", removeadmin))
     app.add_handler(CommandHandler("admins", admins))
 
     logger.info("Backlog Bot starting...")
