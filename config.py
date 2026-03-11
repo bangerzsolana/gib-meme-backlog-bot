@@ -9,3 +9,4 @@ if not TELEGRAM_BOT_TOKEN:
 
 SEED_ADMIN = os.getenv("SEED_ADMIN", "")
 GROUP_ID = os.getenv("GROUP_ID", "")
+DATABASE_URL = os.getenv("DATABASE_URL", "")
