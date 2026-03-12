@@ -1,7 +1,10 @@
 import logging
 import os
+import uuid
 from functools import wraps
 
+import boto3
+from botocore.config import Config
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -13,6 +16,46 @@ from telegram.ext import (
 
 import config
 import database as db
+
+
+# ---------------------------------------------------------------------------
+# R2 upload
+# ---------------------------------------------------------------------------
+
+def _get_r2_client():
+    if not all([config.R2_ACCOUNT_ID, config.R2_ACCESS_KEY_ID, config.R2_SECRET_ACCESS_KEY]):
+        return None
+    return boto3.client(
+        "s3",
+        endpoint_url=f"https://{config.R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+        aws_access_key_id=config.R2_ACCESS_KEY_ID,
+        aws_secret_access_key=config.R2_SECRET_ACCESS_KEY,
+        config=Config(signature_version="s3v4"),
+        region_name="auto",
+    )
+
+
+async def upload_photo_to_r2(bot, file_id: str) -> str | None:
+    """Download a Telegram photo and upload it to R2. Returns the public URL or None."""
+    if not config.R2_PUBLIC_URL:
+        return None
+    try:
+        r2 = _get_r2_client()
+        if not r2:
+            return None
+        tg_file = await bot.get_file(file_id)
+        photo_bytes = await tg_file.download_as_bytearray()
+        key = f"images/{uuid.uuid4().hex}.jpg"
+        r2.put_object(
+            Bucket=config.R2_BUCKET,
+            Key=key,
+            Body=bytes(photo_bytes),
+            ContentType="image/jpeg",
+        )
+        return f"{config.R2_PUBLIC_URL.rstrip('/')}/{key}"
+    except Exception as e:
+        logger.warning(f"R2 upload failed: {e}")
+        return None
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -132,7 +175,11 @@ async def _add_item(update, context, category: str, label: str, emoji: str, cmd:
         await update.message.reply_text(f"Usage: /{cmd} <description>")
         return
 
-    item_id = db.add_item(category, description, image_file_id, username)
+    image_url = None
+    if image_file_id:
+        image_url = await upload_photo_to_r2(context.bot, image_file_id)
+
+    item_id = db.add_item(category, description, image_file_id, username, image_url=image_url)
     await update.message.reply_text(f"{emoji} {label} #{item_id} added: {description}")
 
 

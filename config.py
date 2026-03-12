@@ -10,3 +10,9 @@ if not TELEGRAM_BOT_TOKEN:
 SEED_ADMIN = os.getenv("SEED_ADMIN", "")
 GROUP_ID = os.getenv("GROUP_ID", "")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
+
+R2_ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID", "")
+R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID", "")
+R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "")
+R2_BUCKET = os.getenv("R2_BUCKET", "backlog-board")
+R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL", "")  # e.g. https://pub-xxxx.r2.dev

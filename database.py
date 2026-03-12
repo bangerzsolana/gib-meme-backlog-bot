@@ -36,11 +36,19 @@ def init_db(seed_admin: str = ""):
             category TEXT NOT NULL,
             description TEXT NOT NULL,
             image_file_id TEXT,
+            image_url TEXT,
             added_by TEXT,
             status TEXT DEFAULT 'open',
             created_at TIMESTAMP DEFAULT NOW()
         )
     """)
+
+    # Migration: add image_url to existing tables
+    try:
+        c.execute("ALTER TABLE items ADD COLUMN IF NOT EXISTS image_url TEXT")
+        conn.commit()
+    except Exception:
+        conn.rollback()
 
     conn.commit()
 
@@ -160,16 +168,17 @@ def add_item(
     description: str,
     image_file_id: str | None,
     added_by: str,
+    image_url: str | None = None,
 ) -> int:
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(
         """
-        INSERT INTO items (category, description, image_file_id, added_by)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO items (category, description, image_file_id, image_url, added_by)
+        VALUES (%s, %s, %s, %s, %s)
         RETURNING id
         """,
-        (category, description, image_file_id, added_by),
+        (category, description, image_file_id, image_url, added_by),
     )
     conn.commit()
     item_id = cur.fetchone()[0]
