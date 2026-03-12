@@ -14,6 +14,15 @@ from telegram.ext import (
     filters,
 )
 
+
+class _CaptionStartsWith(filters.MessageFilter):
+    def __init__(self, prefix: str):
+        self.prefix = prefix
+        super().__init__()
+
+    def filter(self, message) -> bool:
+        return bool(message.caption and message.caption.startswith(self.prefix))
+
 import config
 import database as db
 
@@ -304,7 +313,7 @@ def main():
         ("biccs", biccs), ("c4", c4), ("newfeatures", newfeatures), ("newfeature", newfeature), ("new", new_cmd),
         ("bangerz", bangerz),
     ]:
-        app.add_handler(MessageHandler(filters.PHOTO & filters.Caption([f"/{cmd}"]), handler))
+        app.add_handler(MessageHandler(filters.PHOTO & _CaptionStartsWith(f"/{cmd}"), handler))
         app.add_handler(CommandHandler(cmd, handler))
 
     # 3. Admin management
