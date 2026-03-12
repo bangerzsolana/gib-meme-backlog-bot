@@ -198,6 +198,9 @@ async def backlog(update, context):
 async def bug(update, context):
     await _add_item(update, context, "bug", "Bug", "🐛")
 
+async def bugs(update, context):
+    await _add_item(update, context, "bug", "Bug", "🐛", cmd="bugs")
+
 async def biccs(update, context):
     await _add_item(update, context, "biccs", "Biccs item", "🟣")
 
@@ -309,7 +312,7 @@ def main():
 
     # 2. Intake commands (group and DM)
     for cmd, handler in [
-        ("backlog", backlog), ("bug", bug),
+        ("backlog", backlog), ("bug", bug), ("bugs", bugs),
         ("biccs", biccs), ("c4", c4), ("newfeatures", newfeatures), ("newfeature", newfeature), ("new", new_cmd),
         ("bangerz", bangerz),
     ]:
