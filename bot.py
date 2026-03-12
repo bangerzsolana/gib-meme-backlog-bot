@@ -81,6 +81,8 @@ async def commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/bug <description> — Log a bug report\n"
             "/biccs <description> — Add to Biccs channel\n"
             "/c4 <description> — Add to C4 channel\n"
+            "/new <description> — Add a new feature idea\n"
+            "/newfeature <description> — Add a new feature idea\n"
             "/newfeatures <description> — Add a new feature idea\n"
             "/bangerz <description> — Add to Bangerz channel\n"
             "/setup — Link this group\n"
@@ -103,8 +105,10 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def _add_item(update, context, category: str, label: str, emoji: str):
+async def _add_item(update, context, category: str, label: str, emoji: str, cmd: str = None):
     """Shared handler for all intake commands."""
+    if cmd is None:
+        cmd = category
     username = get_username(update)
     if not db.is_admin(username):
         await update.message.reply_text("You don't have permission.")
@@ -116,8 +120,8 @@ async def _add_item(update, context, category: str, label: str, emoji: str):
 
     if update.message.photo:
         caption = update.message.caption or ""
-        if caption.startswith(f"/{category}"):
-            caption = caption[len(f"/{category}"):].strip()
+        if caption.startswith(f"/{cmd}"):
+            caption = caption[len(f"/{cmd}"):].strip()
         description = caption if caption else None
         image_file_id = update.message.photo[-1].file_id
     else:
@@ -125,7 +129,7 @@ async def _add_item(update, context, category: str, label: str, emoji: str):
             description = " ".join(context.args)
 
     if not description:
-        await update.message.reply_text(f"Usage: /{category} <description>")
+        await update.message.reply_text(f"Usage: /{cmd} <description>")
         return
 
     item_id = db.add_item(category, description, image_file_id, username)
@@ -146,6 +150,12 @@ async def c4(update, context):
 
 async def newfeatures(update, context):
     await _add_item(update, context, "newfeatures", "New feature", "✨")
+
+async def new_cmd(update, context):
+    await _add_item(update, context, "newfeatures", "New feature", "✨", cmd="new")
+
+async def newfeature(update, context):
+    await _add_item(update, context, "newfeatures", "New feature", "✨", cmd="newfeature")
 
 async def bangerz(update, context):
     await _add_item(update, context, "bangerz", "Bangerz item", "🟠")
@@ -244,7 +254,7 @@ def main():
     # 2. Intake commands (group and DM)
     for cmd, handler in [
         ("backlog", backlog), ("bug", bug),
-        ("biccs", biccs), ("c4", c4), ("newfeatures", newfeatures),
+        ("biccs", biccs), ("c4", c4), ("newfeatures", newfeatures), ("newfeature", newfeature), ("new", new_cmd),
         ("bangerz", bangerz),
     ]:
         app.add_handler(MessageHandler(filters.PHOTO & filters.Caption([f"/{cmd}"]), handler))
