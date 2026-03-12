@@ -79,6 +79,9 @@ async def commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "\n\nAdmin Commands:\n"
             "/backlog <description> — Add a backlog item\n"
             "/bug <description> — Log a bug report\n"
+            "/biccs <description> — Add to Biccs channel\n"
+            "/c4 <description> — Add to C4 channel\n"
+            "/newfeatures <description> — Add a new feature idea\n"
             "/setup — Link this group\n"
             "/newadmin <username> — Add an admin\n"
             "/removeadmin <username> — Remove an admin\n"
@@ -99,18 +102,21 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-@require_admin
-async def backlog(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def _add_item(update, context, category: str, label: str, emoji: str):
+    """Shared handler for all intake commands."""
     username = get_username(update)
+    if not db.is_admin(username):
+        await update.message.reply_text("You don't have permission.")
+        return
+    db.update_admin_chat_id(username, update.effective_user.id)
+
     description = None
     image_file_id = None
 
     if update.message.photo:
-        # Photo message — use caption as description
         caption = update.message.caption or ""
-        # Strip the /backlog command from caption if present
-        if caption.startswith("/backlog"):
-            caption = caption[len("/backlog"):].strip()
+        if caption.startswith(f"/{category}"):
+            caption = caption[len(f"/{category}"):].strip()
         description = caption if caption else None
         image_file_id = update.message.photo[-1].file_id
     else:
@@ -118,35 +124,27 @@ async def backlog(update: Update, context: ContextTypes.DEFAULT_TYPE):
             description = " ".join(context.args)
 
     if not description:
-        await update.message.reply_text("Usage: /backlog <description>")
+        await update.message.reply_text(f"Usage: /{category} <description>")
         return
 
-    item_id = db.add_item("backlog", description, image_file_id, username)
-    await update.message.reply_text(f"✅ Backlog item #{item_id} added: {description}")
+    item_id = db.add_item(category, description, image_file_id, username)
+    await update.message.reply_text(f"{emoji} {label} #{item_id} added: {description}")
 
 
-@require_admin
-async def bug(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    username = get_username(update)
-    description = None
-    image_file_id = None
+async def backlog(update, context):
+    await _add_item(update, context, "backlog", "Backlog item", "✅")
 
-    if update.message.photo:
-        caption = update.message.caption or ""
-        if caption.startswith("/bug"):
-            caption = caption[len("/bug"):].strip()
-        description = caption if caption else None
-        image_file_id = update.message.photo[-1].file_id
-    else:
-        if context.args:
-            description = " ".join(context.args)
+async def bug(update, context):
+    await _add_item(update, context, "bug", "Bug", "🐛")
 
-    if not description:
-        await update.message.reply_text("Usage: /bug <description>")
-        return
+async def biccs(update, context):
+    await _add_item(update, context, "biccs", "Biccs item", "🟣")
 
-    item_id = db.add_item("bug", description, image_file_id, username)
-    await update.message.reply_text(f"🐛 Bug #{item_id} logged: {description}")
+async def c4(update, context):
+    await _add_item(update, context, "c4", "C4 item", "🔵")
+
+async def newfeatures(update, context):
+    await _add_item(update, context, "newfeatures", "New feature", "✨")
 
 
 # ---------------------------------------------------------------------------
@@ -240,14 +238,12 @@ def main():
     app.add_handler(CommandHandler("setup", setup))
 
     # 2. Intake commands (group and DM)
-    app.add_handler(
-        MessageHandler(filters.PHOTO & filters.Caption(["/backlog"]), backlog)
-    )
-    app.add_handler(CommandHandler("backlog", backlog))
-    app.add_handler(
-        MessageHandler(filters.PHOTO & filters.Caption(["/bug"]), bug)
-    )
-    app.add_handler(CommandHandler("bug", bug))
+    for cmd, handler in [
+        ("backlog", backlog), ("bug", bug),
+        ("biccs", biccs), ("c4", c4), ("newfeatures", newfeatures),
+    ]:
+        app.add_handler(MessageHandler(filters.PHOTO & filters.Caption([f"/{cmd}"]), handler))
+        app.add_handler(CommandHandler(cmd, handler))
 
     # 3. Admin management
     app.add_handler(CommandHandler("newadmin", newadmin))
