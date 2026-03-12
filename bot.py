@@ -82,6 +82,7 @@ async def commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/biccs <description> — Add to Biccs channel\n"
             "/c4 <description> — Add to C4 channel\n"
             "/newfeatures <description> — Add a new feature idea\n"
+            "/bangerz <description> — Add to Bangerz channel\n"
             "/setup — Link this group\n"
             "/newadmin <username> — Add an admin\n"
             "/removeadmin <username> — Remove an admin\n"
@@ -145,6 +146,9 @@ async def c4(update, context):
 
 async def newfeatures(update, context):
     await _add_item(update, context, "newfeatures", "New feature", "✨")
+
+async def bangerz(update, context):
+    await _add_item(update, context, "bangerz", "Bangerz item", "🟠")
 
 
 # ---------------------------------------------------------------------------
@@ -241,6 +245,7 @@ def main():
     for cmd, handler in [
         ("backlog", backlog), ("bug", bug),
         ("biccs", biccs), ("c4", c4), ("newfeatures", newfeatures),
+        ("bangerz", bangerz),
     ]:
         app.add_handler(MessageHandler(filters.PHOTO & filters.Caption([f"/{cmd}"]), handler))
         app.add_handler(CommandHandler(cmd, handler))
