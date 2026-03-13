@@ -289,6 +289,12 @@ async def post_init(application: Application):
         return
 
     commit_msg = os.getenv("RAILWAY_GIT_COMMIT_MESSAGE", "")
+    if commit_msg:
+        # Strip co-author lines added by Claude
+        commit_msg = "\n".join(
+            line for line in commit_msg.splitlines()
+            if not line.startswith("Co-Authored-By:")
+        ).strip()
     text = "Backlog Bot reporting for duty 📋"
     if commit_msg:
         text += f"\n\n_{commit_msg}_"
