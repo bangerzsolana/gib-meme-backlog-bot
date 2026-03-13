@@ -119,6 +119,15 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Backlog Bot reporting for duty 📋")
 
 
+@require_admin
+async def groupid(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    gid = get_group_id()
+    if gid:
+        await update.message.reply_text(f"Group ID: `{gid}`", parse_mode="Markdown")
+    else:
+        await update.message.reply_text("No group linked yet. Run /setup inside the group.")
+
+
 async def commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = get_username(update)
     text = (
@@ -320,6 +329,7 @@ def main():
         app.add_handler(CommandHandler(cmd, handler))
 
     # 3. Admin management
+    app.add_handler(CommandHandler("groupid", groupid))
     app.add_handler(CommandHandler("newadmin", newadmin))
     app.add_handler(CommandHandler("removeadmin", removeadmin))
     app.add_handler(CommandHandler("admins", admins))
